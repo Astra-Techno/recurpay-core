@@ -12,4 +12,4 @@ Route::post('/login', [\App\Http\Controllers\Api\AuthController::class, 'login']
 Route::post('/guest-token', [\App\Http\Controllers\Api\AuthController::class, 'guestToken']);
 
 // Public routes (No authentication required)
-Route::post('/register', [UserController::class, 'register']);
+Route::post('/register', [\App\Http\Controllers\Api\AuthController::class, 'register']);
