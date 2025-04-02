@@ -1,0 +1,31 @@
+<?php
+
+namespace App\DataForge\Sql;
+use Illuminate\Support\Facades\Auth;
+
+use DataForge\Sql;
+
+class Properties extends Sql
+{
+    public function default(&$data)
+    {
+        $query = Query('PropertiesList');
+        $query->select('list', 'p.*');
+        $query->select('total', 'COUNT(p.id) AS total');
+        $query->from('properties AS p');
+        $query->filter('p.landlord_id = '.Auth::id());
+        return $query;
+    }
+
+    public function create(&$data)
+    {
+        $query = Query('PaymentCreate');
+        $query->insert('payments', [
+            'subscription_id' => '{request.subscription_id}',
+            'amount' => '{request.amount}',
+            'status' => '{request.status}',
+            'payment_date' => now(),
+        ]);
+        return $query;
+    }
+}
