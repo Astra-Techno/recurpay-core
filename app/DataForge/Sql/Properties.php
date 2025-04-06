@@ -11,9 +11,12 @@ class Properties extends Sql
     {
         $query = Query('PropertiesList');
         $query->select('list', 'p.*');
+        $query->select('entity', 'p.*');
         $query->select('total', 'COUNT(p.id) AS total');
         $query->from('properties AS p');
         $query->filter('p.landlord_id = '.Auth::id());
+        $query->filterOptional('p.id={id}');
+
         return $query;
     }
 
