@@ -185,6 +185,11 @@ class DataForge extends ClassStatic
             }
 
             call_user_func_array([$class, 'bind'], $arguments);
+
+            if (method_exists($class, 'create')) {
+                call_user_func([$class, 'create']);
+            }
+
         } else if ($item = call_user_func_array([$class, 'init'], $arguments)) {
             $class->bindInitProperties($item);
         } else {
@@ -201,7 +206,7 @@ class DataForge extends ClassStatic
         return $class;
     }
 
-	public function convertArgs($input)
+	public static function convertArgs($input)
 	{
 		foreach ($input as $key => $val) {
 			if (is_array($val))

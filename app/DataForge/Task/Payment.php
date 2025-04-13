@@ -6,18 +6,28 @@ use DataForge\Task;
 
 class Payment extends Task
 {
-    public function process($request)
+    public function save($request)
     {
-        $payment = \Sql('Payment:create', [
-            'subscription_id' => $request->get('subscription_id'),
-            'amount' => $request->get('amount'),
-            'status' => 'success',
-        ])->execute();
+        if ($id = $request->get('id')) {
+            $payment = \DataForge::getPayment($id);
+        } else {
+            $validatedData = $request->validate([
+                'period' => 'required',
+                'amount' => 'required',
+                'due_from' => 'required',
+                'property_id' => 'required',
+                'users' => 'required',
+            ], [
+                'property_id.required' => 'Please select a property to assign this payment.',
+                'users.required' => 'Please select a tenant to assign this payment.',
+            ]);
 
-        // Update next payment date
-        $subscription = \DataForge::getSubscription($request->get('subscription_id'));
-        $subscription->update(['next_payment_date' => now()->addMonth()]);
+            $payment = \DataForge::newPayment($request->toArray());
+        }
 
-        return $payment;
+        if (!$payment->save($request))
+            return $this->raiseError($tenant->getError());
+
+        return $payment->toArray();
     }
 }
