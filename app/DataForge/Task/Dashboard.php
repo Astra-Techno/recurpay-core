@@ -14,10 +14,13 @@ class Dashboard extends Task
 
         $data['stats'] =  [
             'Total Properties' => \Sql('Properties', ['select_type' => 'total'])->result() ?? 0,
-            'Occupied Units'=> \Sql('Properties:activeProperties', ['select_type' => 'total'])->result() ?? 0,
+            'Occupied Units'=> \Sql('Properties:activeProperties', ['select_type' => 'total','status' => 'active'])->result() ?? 0,
             'Pending Payments' => \Sql('PaymentTransactions', ['select_type' => 'total','status' => 'pending'])->result() ?? 0,
             'Revenue'=> \Sql('PaymentTransactions', ['select_type' => 'revenue'])->result() ?? 0.00
         ];
+
+        $data['occupancy'] = [\Sql('Properties:activeProperties', ['select_type' => 'total','status' => 'active'])->result() ?? 0,
+            \Sql('Properties:activeProperties', ['select_type' => 'total','status' => 'vacant'])->result() ?? 0];
 
 
         return $data;

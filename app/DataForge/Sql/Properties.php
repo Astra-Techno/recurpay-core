@@ -27,9 +27,15 @@ class Properties extends Sql
         $query->select('total', 'COUNT(DISTINCT p.id) AS total');
         $query->select('entity', 'p.*');
         $query->from('properties AS p');
-        $query->inner('property_tenants AS pt ON pt.property_id = p.id');
+        $query->left('property_tenants AS pt ON pt.property_id = p.id');
         $query->filter('p.landlord_id = '.Auth::id());
-        $query->filter('pt.status = "active"');
+
+        if ($data['status'] == 'vacant') {
+            $query->filter('pt.status = "vacant" OR pt.id IS NULL');
+        } else {
+            $query->filter('pt.status = {status}');
+        }
+
         $query->filterOptional('p.id={id}');
         return $query;
     }
