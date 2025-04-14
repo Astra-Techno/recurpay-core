@@ -20,6 +20,22 @@ class Properties extends Sql
         return $query;
     }
 
+    public function activeProperties(&$data)
+    {
+        $query = Query('PropertiesList');
+        $query->select('list', 'p.*');
+        $query->select('total', 'COUNT(DISTINCT p.id) AS total');
+        $query->select('entity', 'p.*');
+        $query->from('properties AS p');
+        $query->inner('property_tenants AS pt ON pt.property_id = p.id');
+        $query->filter('p.landlord_id = '.Auth::id());
+        $query->filter('pt.status = "active"');
+        $query->filterOptional('p.id={id}');
+        return $query;
+    }
+
+
+
     public function create(&$data)
     {
         $query = Query('PaymentCreate');

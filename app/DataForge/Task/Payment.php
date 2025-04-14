@@ -26,7 +26,7 @@ class Payment extends Task
         }
 
         if (!$payment->save($request))
-            return $this->raiseError($tenant->getError());
+            return $this->raiseError($payment->getError());
 
         return $payment->toArray();
     }
