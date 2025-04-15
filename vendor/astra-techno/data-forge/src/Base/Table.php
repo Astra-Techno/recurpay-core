@@ -354,6 +354,8 @@ class Table extends ClassStatic
     {
         try {
             $record->save();
+
+            $record = $record->fresh();
         } catch(Exception $e) {
             self::setError($e->getMessage());
             return false;
