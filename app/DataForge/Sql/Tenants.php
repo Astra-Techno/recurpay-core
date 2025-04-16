@@ -10,6 +10,17 @@ class Tenants extends Sql
     public function default(&$data)
     {
         $query = Query('TenantsList');
+
+        $id = request('id');
+        if (!empty($id)) {
+            $data['id'] = $id;
+        }
+
+        $property_id = request('property_id');
+        if (!empty($property_id)) {
+            $data['property_id'] = $property_id;
+        }
+
         $query->select('list', 'pt.id,pt.name,pt.property_id,CONCAT("https://i.pravatar.cc/100?img=",pt.id) as avatar,p.name AS property,TRIM(
   CONCAT(
     IFNULL(p.address1, ""),
@@ -32,7 +43,7 @@ class Tenants extends Sql
         $query->filter('p.landlord_id = ' . Auth::id());
         $query->filterOptional('pt.id={id}');
 
-        $query->filterOptional('pt.property_id={request.property_id}');
+        $query->filterOptional('pt.property_id={property_id}');
 
         return $query;
     }

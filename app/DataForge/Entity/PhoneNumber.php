@@ -25,6 +25,8 @@ class PhoneNumber extends Entity
             return false;
 
         $phone = $this->parsePhoneNumber($this->phone);
+        $phone['user_id'] = 0;
+
         $this->bind($phone);
 
         if ($this->find($this->toArray()))
@@ -60,11 +62,11 @@ class PhoneNumber extends Entity
     {
         // Remove all non-digit and non-plus characters
         $cleaned = preg_replace('/[^\d+]/', '', $phone);
-        
+
         // Default country code for India
         $countryCode = '+91';
         $number = $cleaned;
-        
+
         // If number starts with +, extract country code
         if (strpos($cleaned, '+') === 0) {
             // Handle known country codes (India +91, US +1, etc.)
@@ -94,21 +96,21 @@ class PhoneNumber extends Entity
         elseif (preg_match('/^(\d{10})/', $cleaned, $matches)) {
             $number = $matches[1];
         }
-        
+
         // Format the local number (Indian format: 5-4-1)
         $formattedLocal = $number;
         if (strlen($number) === 10) {
             $formattedLocal = substr($number, 0, 5) . ' ' . substr($number, 5, 4) . ' ' . substr($number, 9, 1);
         }
-        
+
         return [
             'phone' => $phone,
             'full_number' => str_replace('+', '', $countryCode) . $number,
             'full_international' => $countryCode . $number,
             'country_code' => $countryCode,
             'local_number' => $number,
-            'formatted_international' => $countryCode . ' ' . 
-                                    substr($number, 0, 5) . ' ' . 
+            'formatted_international' => $countryCode . ' ' .
+                                    substr($number, 0, 5) . ' ' .
                                     substr($number, 5),
             'formatted_local' => $formattedLocal,
             'is_valid' => $this->validateIndianNumber($number)

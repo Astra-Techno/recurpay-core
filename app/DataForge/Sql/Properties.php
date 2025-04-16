@@ -9,6 +9,12 @@ class Properties extends Sql
 {
     public function default(&$data)
     {
+
+        $id = request('id');
+        if (!empty($id)) {
+            $data['id'] = $id;
+        }
+
         $query = Query('PropertiesList');
         $query->select('list', 'p.*');
         $query->select('entity', 'p.*');
