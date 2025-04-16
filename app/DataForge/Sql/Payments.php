@@ -9,8 +9,9 @@ class Payments extends Sql
 {
     public function default(&$data)
     {
+        $data['property_id'] = $data['property_id'] ?? request('property_id') ?? null;
         $query = Query('PaymentList');
-        $query->select('list', 'pp.*');
+        $query->select('list', 'pp.*,p.name AS property, GROUP_CONCAT(pu.user_id) AS users');
         $query->select('entity', 'pp.*, p.name AS property, GROUP_CONCAT(pu.user_id) AS users');
         $query->select('total', 'COUNT(pp.id) AS total');
 
@@ -21,9 +22,9 @@ class Payments extends Sql
         $query->inner('property_tenants AS pt ON pt.user_id=pu.user_id');
 
         $query->filter('p.landlord_id = '.Auth::id());
-        $query->filterOptional('pt.id={id}');
+        $query->filterOptional('pp.id={id}');
 
-        $query->filterOptional('p.id={request.property_id}');
+        $query->filterOptional('p.id={property_id}');
 
         $query->group('pp.id');
 
