@@ -40,7 +40,7 @@ class Tenants extends Sql
 
         $query->from('property_tenants AS pt');
         $query->inner('properties AS p ON p.id=pt.property_id');
-        $query->filter('p.landlord_id = ' . Auth::id());
+        $query->filter('p.user_id = ' . Auth::id());
         $query->filterOptional('pt.id={id}');
 
         $query->filterOptional('pt.property_id={property_id}');

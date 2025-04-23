@@ -21,7 +21,7 @@ class PaymentTransactions extends Sql
         $query->inner('payment_transactions AS ptr ON ptr.payment_id  = pp.id AND pu.status=1');
         $query->inner('property_tenants AS pt ON pt.user_id=pu.user_id');
 
-        $query->filter('p.landlord_id = '.Auth::id());
+        $query->filter('p.user_id = '.Auth::id());
 
         if ($data['select_type'] == 'revenue') {
             $query->filter('ptr.status = "completed"');

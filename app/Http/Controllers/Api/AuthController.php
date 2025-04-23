@@ -10,10 +10,13 @@ use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rules;
+use libphonenumber\PhoneNumberUtil;
+use libphonenumber\PhoneNumberFormat;
+use libphonenumber\NumberParseException;
 
 class AuthController extends Controller
 {
-	public function login(Request $request)
+	public function login1(Request $request)
 	{
 		$credentials = $request->validate([
 			'email'=> ['required', 'email'],
@@ -61,6 +64,52 @@ class AuthController extends Controller
 			'token' => $token
 		]);
 	}
+
+	public function login(Request $request)
+	{
+		$request->validate([
+			'email' => 'required|string',
+			'otp' => 'nullable|string',
+			'password' => 'nullable|string',
+			'remember' => 'boolean',
+		]);
+
+		$remember = $request->boolean('remember', false);
+
+		$normalized = $this->normalizePhone($request->email);
+		if ($normalized)
+			$user = User::where('phone', ltrim($normalized['e164'], '+'))->first();
+		else
+			$user = User::where('email', $request->email)->first();
+
+		if (!$user) {
+			return response(['message' => 'User not found!'], 422);
+		}
+
+		// OTP login path
+		if ($request->filled('otp')) {
+			if ($request->otp !== '1234') { // Dummy OTP for now
+				return response(['message' => 'Invalid OTP'], 422);
+			}
+		}
+		// Password login path
+		elseif (!Hash::check($request->password, $user->password)) {
+			return response(['message' => 'Email or password is incorrect'], 422);
+		}
+
+		if ($user->block) {
+			return response(['message' => 'Your email address is not verified'], 403);
+		}
+
+		Auth::login($user, $remember);
+		$token = $user->createToken('main')->plainTextToken;
+
+		return response([
+			'user' => $user->toArray(),
+			'token' => $token
+		]);
+	}
+
 
 	public function logout()
 	{
@@ -141,4 +190,26 @@ class AuthController extends Controller
             ], 500);
         }
     }
+
+	function normalizePhone($input, $defaultCountry = 'IN') 
+	{
+		$phoneUtil = PhoneNumberUtil::getInstance();
+
+		try {
+			$numberProto = $phoneUtil->parse($input, $defaultCountry);
+
+			if (!$phoneUtil->isValidNumber($numberProto)) {
+				return null;
+			}
+
+			return [
+				'e164' => $phoneUtil->format($numberProto, PhoneNumberFormat::E164), // +919894839888
+				'region' => $phoneUtil->getRegionCodeForNumber($numberProto),        // IN
+				'national' => $phoneUtil->format($numberProto, PhoneNumberFormat::NATIONAL), // 09894 839888
+			];
+		} catch (NumberParseException $e) {
+			return null;
+		}
+	}
+
 }

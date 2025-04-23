@@ -287,7 +287,9 @@ class Query extends ClassObject
     public function getRequestField($field)
     {
         $allowed_fields = ['sort_by', 'sort_order', 'select_type'];
-        if (strpos($field, 'filter_') === 0 || strpos($field, 'filter.') === 0)
+        if (strpos($field, 'request.') === 0)
+            return str_replace('request.', '', $field);
+        else if (strpos($field, 'filter_') === 0 || strpos($field, 'filter.') === 0)
            return $field;
         else if (in_array($field, $allowed_fields))
             return $field;

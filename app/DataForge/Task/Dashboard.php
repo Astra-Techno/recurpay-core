@@ -13,7 +13,7 @@ class Dashboard extends Task
         $data = [];
 
         $data['stats'] = [
-            'Total Properties' => \Sql('Properties', ['select_type' => 'total'])->result() ?? 0,
+            'Total Properties' => \Sql('Properties', ['select_type' => 'total', 'request.Owned' => 1])->result() ?? 0,
             'Occupied Units' => \Sql('Properties:activeProperties', ['select_type' => 'total', 'status' => 'active'])->result() ?? 0,
             'Pending Payments' => \Sql('PaymentTransactions', ['select_type' => 'total', 'status' => 'pending'])->result() ?? 0,
             'Revenue' => \Sql('PaymentTransactions', ['select_type' => 'revenue'])->result() ?? 0.00
@@ -25,7 +25,7 @@ class Dashboard extends Task
         ];
 
         $data['statsCount'] = [
-            'totalProperties' => \Sql('Properties', ['select_type' => 'total'])->result() ?? 0,
+            'totalProperties' => \Sql('Properties', ['select_type' => 'total', 'request.Owned' => 1])->result() ?? 0,
             'tenants' => \Sql('Tenants', ['select_type' => 'total'])->result() ?? 0,
             'pendingPayments' => \Sql('PaymentTransactions', ['select_type' => 'total', 'status' => 'pending'])->result() ?? 0
         ];
