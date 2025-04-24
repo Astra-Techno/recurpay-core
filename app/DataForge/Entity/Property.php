@@ -15,8 +15,10 @@ class Property extends Entity
     public function save($request)
     {
         $data = $request->toArray();
-        if (empty($this->id))
+        if (empty($this->id)) {
             $data['landlord_id'] = Auth::id();
+            $data['user_id'] = Auth::id();
+        }
 
         if ($data = $this->TableSave($data, 'properties', 'id')) {
             $this->bind($data);
