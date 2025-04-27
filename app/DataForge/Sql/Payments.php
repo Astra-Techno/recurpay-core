@@ -7,14 +7,24 @@ use DataForge\Sql;
 
 class Payments extends Sql
 {
+    public function pay_status()
+    {
+        $condition = "CASE WHEN pp.total_due > 0  AND pt.user_id=".Auth::id()." THEN 'due'
+                             WHEN pp.total_due > 0 AND p.user_id=".Auth::id()." THEN 'pending'
+                             WHEN pp.total_due <= 0 AND pp.due_from > CURRENT_DATE THEN 'upcoming'
+                             WHEN pp.total_due <= 0 AND pp.due_from <= CURRENT_DATE THEN 'paid'
+                             ELSE 'other' END AS pay_status";
+        return $condition;
+    }
     public function default(&$data)
     {
         $query = Query('PaymentList');
+
         $query->select('list', "pp.id,p.id as property_id, p.name AS property, pp.amount, pp.currency, pp.period,
                         pp.total_due, pp.next_due_date, p.address1, DATEDIFF(pp.next_due_date, CURDATE()) AS due_in_days,
                         CASE WHEN pp.type='other' AND pp.other_type !='' THEN pp.other_type
-                        ELSE pp.type END AS type");
-        $query->select('entity', 'pp.*, p.name AS property, GROUP_CONCAT(pu.user_id) AS userIds');
+                        ELSE pp.type END AS type,".$this->pay_status());
+        $query->select('entity', "pp.*, p.name AS property, GROUP_CONCAT(pu.user_id) AS userIds,".$this->pay_status());
         $query->select('total', 'COUNT(pp.id) AS total');
 
         $query->from('payment_users AS pu');
@@ -46,7 +56,12 @@ class Payments extends Sql
         $query->select('list', "pp.id,p.id as property_id, p.name AS property, pp.amount, pp.currency, pp.period,
                         pp.total_due, pp.next_due_date, p.address1, DATEDIFF(pp.next_due_date, CURDATE()) AS due_in_days,
                         CASE WHEN pp.type='other' AND pp.other_type !='' THEN pp.other_type
-                        ELSE pp.type END AS type,p.name as group_label");
+                        ELSE pp.type END AS type,
+                        CASE WHEN pp.total_due > 0  AND pt.user_id=".Auth::id()." THEN 'due'
+                        WHEN pp.total_due > 0 AND p.user_id=".Auth::id()." THEN 'pending'
+                        WHEN pp.total_due <= 0 THEN 'paid'
+                        ELSE 'other' END AS pay_status,
+                        p.name as group_label");
         $query->select('entity', 'pp.*, p.name AS property, GROUP_CONCAT(pu.user_id) AS userIds');
         $query->select('total', 'COUNT(pp.id) AS total');
         $query->select('group_total', 'COUNT(pp.id) AS total,p.name as group_label');
