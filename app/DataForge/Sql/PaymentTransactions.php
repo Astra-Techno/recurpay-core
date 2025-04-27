@@ -9,8 +9,10 @@ class PaymentTransactions extends Sql
 {
     public function default(&$data)
     {
+
         $query = Query('PaymentTransactionList');
-        $query->select('list', 'pp.*');
+        $query->select('list', 'ptr.*, p.name AS property, GROUP_CONCAT(DISTINCT pu.user_id) AS users,pp.type AS payment_type,
+        (select name from users where id=ptr.user_id) AS tenant_name');
         $query->select('entity', 'pp.*, p.name AS property, GROUP_CONCAT(pu.user_id) AS users');
         $query->select('total', 'COUNT(ptr.id) AS total');
         $query->select('revenue', 'SUM(amount_paid) AS revenue');
@@ -26,7 +28,7 @@ class PaymentTransactions extends Sql
         if ($data['select_type'] == 'revenue') {
             $query->filter('ptr.status = "completed"');
         }
-        $query->filterOptional('pt.id={id}');
+        $query->filterOptional('ptr.id={request.id}');
         $query->filterOptional('ptr.status={status}');
         $query->filterOptional('p.id={request.property_id}');
 
