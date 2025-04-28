@@ -30,4 +30,21 @@ class Payment extends Task
 
         return $payment->toArray();
     }
+
+    public function paid($request)
+    {
+        $validatedData = $request->validate([
+            'paymentId' => 'required',
+            'paymentMethodId' => 'required',
+            'paidAmount' => 'required|numeric'
+        ], [
+            'paidAmount.required' => 'Please enter valid amount.'
+        ]);
+
+        $payment = \DataForge::getPayment($request->input('paymentId'));
+        if (!$payment->paid($request))
+            return $this->raiseError($payment->getError());
+
+        return true;
+    }
 }

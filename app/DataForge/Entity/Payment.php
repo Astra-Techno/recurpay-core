@@ -2,6 +2,7 @@
 
 namespace App\DataForge\Entity;
 
+use AstraTech\DataForge\Base\DataForge;
 use DataForge\Entity;
 use Illuminate\Support\Facades\Auth;
 
@@ -11,6 +12,18 @@ class Payment extends Entity
     {
         //echo \Sql('Payments', ['id' => $id, 'select_type' => 'entity']);exit;
         return \Sql('Payments', ['id' => $id, 'select_type' => 'entity'])->fetchRow();
+    }
+
+    function attribGroups()
+    {
+        return [
+            'PayNow' => 'Property,PaymentDue,PaymentOptions'
+        ];
+    }
+
+    public function getProperty()
+    {
+        return DataForge::getProperty($this->property_id);
     }
 
     public function getPaymentUsers()
@@ -174,4 +187,54 @@ class Payment extends Entity
         ];
     }
 
+    function getPaymentOptions()
+    {
+        return Sql('PaymentMethods:paymentAccounts', ['payment_user_id' => $this->Property->user_id])->fetchRowList();
+    }
+
+    function paid($request)
+    {
+        $user_id = Auth::id();
+        if (!$user_id) {
+            $this->setError('Invalid Access!');
+            return false;
+        }
+
+        if (!in_array($user_id, $this->UserIds)) {
+            $this->setError('Access Denied!');
+            return false;
+        }
+
+        $paidAmount = $request->input('paidAmount');
+        if ($paidAmount <= 1) {
+            $this->setError('Invalid Paid Amount!');
+            return false;
+        }
+
+        $paymentMethod = [];
+        $paymentMethodId = $request->input('paymentMethodId');
+        foreach ($this->PaymentOptions as $tmp) 
+        {
+            if ($tmp['id'] == $paymentMethodId) {
+                $paymentMethod = $tmp;
+                break;
+            }
+        }
+
+        if (!$paymentMethod) {
+            $this->setError('Invalid Payment!');
+            return false;
+        }
+
+        $tmp = [
+            'payment_id' => $this->id, 'from_id' => $user_id, 'to_id' => $this->Property->user_id,
+            'amount_paid' => $paidAmount, 'payment_method_id' => $tmp['id'], 'payment_mode' => $tmp['type'],
+            'status' => 'pending', 'paid_on' => \DataForge::Date()
+        ];
+
+        $tmp = $this->TableSave($tmp, 'payment_transactions', 'payment_id');
+        if (!$tmp)
+            return false;
+        return true;
+    }
 }
