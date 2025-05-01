@@ -11,19 +11,22 @@ class PaymentTransactions extends Sql
     {
 
         $query = Query('PaymentTransactionList');
-        $query->select('list', 'ptr.*, p.name AS property, GROUP_CONCAT(DISTINCT pu.user_id) AS users,pp.type AS payment_type,
-        (select name from users where id=ptr.user_id) AS tenant_name');
-        $query->select('entity', 'pp.*, p.name AS property, GROUP_CONCAT(pu.user_id) AS users');
+        $query->select('list', 'ptr.*, p.name AS property, GROUP_CONCAT(DISTINCT pu.user_id) AS users, pay.type AS payment_type,
+        (select name from users where id=ptr.from_id) AS tenant_name');
+        $query->select('entity', 'ptr.*, p.name AS property, GROUP_CONCAT(DISTINCT pu.user_id) AS users');
         $query->select('total', 'COUNT(ptr.id) AS total');
-        $query->select('revenue', 'SUM(amount_paid) AS revenue');
+        $query->select('total_amount', 'SUM(ptr.amount_paid) AS total_amount');
+        $query->select('revenue', 'SUM(
+                                    CASE WHEN ptr.from_id='.Auth::id().' THEN (amount_paid * -1) 
+                                        ELSE amount_paid END
+                                )  AS revenue');
 
-        $query->from('payments AS pp');
-        $query->join('properties AS p', 'p.id = pp.property_id');
-        $query->inner('payment_users AS pu ON pu.payment_id  = pp.id AND pu.status=1');
-        $query->inner('payment_transactions AS ptr ON ptr.payment_id  = pp.id AND pu.status=1');
-        $query->inner('property_tenants AS pt ON pt.user_id=pu.user_id');
+        $query->from('payment_transactions AS ptr');
+        $query->inner('payments AS pay ON ptr.payment_id  = pay.id');
+        $query->inner('properties AS p', 'p.id = pay.property_id');
+        $query->inner('payment_users AS pu ON pu.payment_id  = pay.id');
 
-        $query->filter('p.user_id = '.Auth::id());
+        $query->filter('(ptr.from_id='.Auth::id(). ' OR ptr.to_id='.Auth::id().')');
 
         if ($data['select_type'] == 'revenue') {
             $query->filter('ptr.status = "completed"');
@@ -31,8 +34,11 @@ class PaymentTransactions extends Sql
         $query->filterOptional('ptr.id={request.id}');
         $query->filterOptional('ptr.status={status}');
         $query->filterOptional('p.id={request.property_id}');
+        $query->filterOptional('ptr.payment_id = {request.payment_id}');
+        $query->filterOptional('{request.credits}=1 AND ptr.to_id='.Auth::id());
+        $query->filterOptional('{request.debits}=1 AND ptr.from_id='.Auth::id());
 
-        $query->group('pp.id');
+        $query->group('ptr.id');
 
         return $query;
     }

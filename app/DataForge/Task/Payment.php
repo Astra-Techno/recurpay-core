@@ -47,4 +47,21 @@ class Payment extends Task
 
         return true;
     }
+
+    public function markAsPaid($request)
+    {
+        $validatedData = $request->validate([
+            'id' => 'required',
+            'payment_id' => 'required',
+            'amount_paid' => 'required|numeric'
+        ], [
+            'amount_paid.required' => 'Please enter valid amount.'
+        ]);
+
+        $payment = \DataForge::getPayment($request->input('payment_id'));
+        if (!$payment->markAsPaid($request->input('id')))
+            return $this->raiseError($payment->getError());
+
+        return true;
+    }
 }

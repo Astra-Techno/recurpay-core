@@ -99,18 +99,18 @@ class Payment extends Entity
 
     function getDueFrom()
     {
-        if (!$this->paid_to)
+        if (!$this->paid_to || $this->paid_to == '0000-00-00')
             return $this->due_from;
     
         $paidTo = new \DateTimeImmutable($this->paid_to);
-        $paidTo->modify("+1 days");
+        $paidTo = $paidTo->modify("+1 days");
         return $paidTo->format('Y-m-d');
     }
 
     function getPaymentDue()
     {
         $frequency = $this->period;
-        $dueFrom = $this->dueFrom;
+        $dueFrom = $this->getDueFrom();
         $amount = $this->amount;
         $vacatedDate = ''; // $this->vacatedDate;
 
@@ -232,9 +232,152 @@ class Payment extends Entity
             'status' => 'pending', 'paid_on' => \DataForge::Date()
         ];
 
-        $tmp = $this->TableSave($tmp, 'payment_transactions', 'payment_id');
+        $tmp = $this->TableSave($tmp, 'payment_transactions', 'id');
         if (!$tmp)
             return false;
+
         return true;
+    }
+
+    function markAsPaid($transactionId)
+    {
+        $user_id = Auth::id();
+        if (!$user_id) {
+            $this->setError('Invalid Access!');
+            return false;
+        }
+
+        $transaction = DataForge::getTransaction($transactionId);
+        if (!$transaction) {
+            $this->setError('Invalid User Access!');
+            return false;
+        }
+
+        if ($user_id != $transaction->to_id) {
+            $this->setError('Access Denied!');
+            return false;
+        }
+
+        if ($transaction->status != 'pending') {
+            $this->setError('Payment already in process!');
+            return false;
+        }
+
+        $tmp = $this->calculatePaid($transaction->amount_paid);
+        $tmp['status'] = 'success';
+        $tmp['id'] = $transaction->id;
+
+        $tmp = $this->TableSave($tmp, 'payment_transactions', 'id');
+        if (!$tmp)
+            return false;
+
+        $payment = ['id' => $this->id, 'paid_to' => $tmp['paid_to'], 'credit' => $tmp['balance']];
+        $payment = $this->TableSave($payment, 'payments', 'id');
+        if (!$payment)
+            return false;
+
+        $this->paid_to = $tmp['paid_to'];
+        $this->credit = $tmp['balance'];
+
+        return $this->updateDue();
+    }
+
+    function calculatePaid($paidAmount = 0.00)
+    {
+        $frequency = $this->period;
+        $dueFrom = $this->dueFrom;
+        $amount = $this->amount;
+        $vacatedDate = ''; // $this->vacatedDate;
+        $paidAmount = bcadd($paidAmount, $this->credit, 2);
+
+        $now = new \DateTimeImmutable();
+        $start = new \DateTimeImmutable($dueFrom);
+        $cutoff = $vacatedDate ? new \DateTimeImmutable($vacatedDate) : '';
+
+        if ($this->period == 'onetime') {
+            $due = $amount;
+            $credit = max(0, $paidAmount - $due);
+            $paidToDate = $paidAmount >= $due ? $start : null;
+
+            return [
+                'paid_from' => $this->dueFrom,
+                'paid_to' => $paidToDate ? $paidToDate->format('Y-m-d') : null,
+                'credit_used' => $this->credit,
+                'paid_periods' => 1,
+                'balance' => round($credit, 2),
+                'used_amount' => bcsub($paidAmount, $credit, 2)
+            ];
+        }
+
+        if ($cutoff && $cutoff < $start) {
+            return [
+                'paid_from' => $this->dueFrom,
+                'paid_to' => null,
+                'credit_used' => $this->credit,
+                'paid_periods' => 0,
+                'balance' => round($paidAmount, 2),
+                'used_amount' => 0
+            ];
+        }
+
+        if (!$this->FrequencyMap) {
+            $this->setError("Unsupported frequency: $frequency");
+            return false;
+        }
+
+        $frequencyNum = $this->FrequencyMap['num'];
+        $unit = $this->FrequencyMap['unit'];
+        $i = 0;
+        $credit = $paidAmount;
+        $paidTo = null;
+        $dueCount = 0;
+
+        while (true) {
+            $startNum = $i * $frequencyNum;
+            $endNum = ($i + 1) * $frequencyNum;
+
+            $periodStart = (clone $start)->modify("+{$startNum} {$unit}");
+            $periodEnd = (clone $start)->modify("+{$endNum} {$unit}");
+
+            /*if ($periodStart > $calcEndDate) {
+                break;
+            }*/
+
+            if ($vacatedDate && $cutoff < $periodEnd) {
+                $daysInPeriod = $periodStart->diff($periodEnd)->days;
+                $daysUsed = $periodStart->diff($cutoff)->days;
+                $partialAmount = round(($daysUsed / $daysInPeriod) * $amount, 2);
+
+                if ($credit >= $partialAmount) {
+                    $credit -= $partialAmount;
+                    $paidTo = $cutoff;
+                }
+                break;
+            }
+
+            if ($credit >= $amount) {
+                $credit -= $amount;
+                $paidTo = $periodEnd;
+                $dueCount++;
+            } else {
+                break;
+            }
+
+            $i++;
+        }
+
+        if ($paidTo) {
+            $paidTo = (clone $paidTo)->modify('-1 days');
+            $paidTo = $paidTo->format('Y-m-d');
+        }
+
+        return [
+            'paid_from' => $this->dueFrom,
+            'paid_to' => $paidTo,
+            'credit_used' => $this->credit,
+            'paid_periods' => $dueCount,
+            'balance' => round($credit, 2),
+            'used_amount' => bcsub($paidAmount, $credit, 2)
+        ];
     }
 }
