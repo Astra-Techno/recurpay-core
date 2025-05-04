@@ -15,7 +15,7 @@ class User extends Entity
             $params = ['id' => $id];
         }
 
-        $params['select'] = 'entity';
+        $params['select_type'] = 'entity';
         return \Sql('Users', $params)->fetchRow();
     }
 

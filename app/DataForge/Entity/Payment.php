@@ -17,7 +17,8 @@ class Payment extends Entity
     function attribGroups()
     {
         return [
-            'PayNow' => 'Property,PaymentDue,PaymentOptions'
+            'PayNow' => 'Property,PaymentDue,PaymentOptions',
+            'Edit' => 'Property,UserIds'
         ];
     }
 
@@ -59,8 +60,7 @@ class Payment extends Entity
         }
 
         // Delete remvoed users.
-        foreach ($this->PaymentUsers AS $paymentUser)
-        {
+        foreach ($this->PaymentUsers as $paymentUser) {
             if (in_array($paymentUser['id'], $map_ids))
                 continue;
 
@@ -101,7 +101,7 @@ class Payment extends Entity
     {
         if (!$this->paid_to || $this->paid_to == '0000-00-00')
             return $this->due_from;
-    
+
         $paidTo = new \DateTimeImmutable($this->paid_to);
         $paidTo = $paidTo->modify("+1 days");
         return $paidTo->format('Y-m-d');
@@ -120,20 +120,11 @@ class Payment extends Entity
 
         $calcEndDate = $vacatedDate ? $cutoff : min($now, $cutoff);
 
-        
-        if ($this->period == 'onetime') {
+        if ($this->period == 'onetime' || $calcEndDate < $start) {
             return [
                 'next_due_date' => $start->format('Y-m-d'),
                 'due_count' => 1,
                 'total_due' => $amount,
-            ];
-        }
-
-        if ($calcEndDate < $start) {
-            return [
-                'next_due_date' => $start->format('Y-m-d'),
-                'due_count' => 0,
-                'total_due' => 0.00,
             ];
         }
 
@@ -150,12 +141,11 @@ class Payment extends Entity
         $nextDueDate = null;
 
         while (true) {
-
             $startNum = $i * $frequencyNum;
             $endNum = ($i + 1) * $frequencyNum;
 
             $periodStart = (clone $start)->modify("+{$startNum} {$unit}");
-            $periodEnd = (clone $start)->modify("+".($endNum)." {$unit}");
+            $periodEnd = (clone $start)->modify("+" . ($endNum) . " {$unit}");
 
             if ($periodStart > $calcEndDate) {
                 $nextDueDate = $periodStart;
@@ -213,8 +203,7 @@ class Payment extends Entity
 
         $paymentMethod = [];
         $paymentMethodId = $request->input('paymentMethodId');
-        foreach ($this->PaymentOptions as $tmp) 
-        {
+        foreach ($this->PaymentOptions as $tmp) {
             if ($tmp['id'] == $paymentMethodId) {
                 $paymentMethod = $tmp;
                 break;
@@ -227,9 +216,15 @@ class Payment extends Entity
         }
 
         $tmp = [
-            'payment_id' => $this->id, 'from_id' => $user_id, 'to_id' => $this->Property->user_id,
-            'amount_paid' => $paidAmount, 'payment_method_id' => $tmp['id'], 'payment_mode' => $tmp['type'],
-            'status' => 'pending', 'paid_on' => \DataForge::Date()
+            'payment_id' => $this->id,
+            'from_id' => $user_id,
+            'to_id' => $this->Property->user_id,
+            'amount_paid' => $paidAmount,
+            'payment_method_id' => $tmp['id'],
+            'payment_mode' => $tmp['type'],
+            'status' => 'paid',
+            'due_date' => $this->next_due_date,
+            'paid_on' => \DataForge::Date()
         ];
 
         $tmp = $this->TableSave($tmp, 'payment_transactions', 'id');
@@ -258,7 +253,7 @@ class Payment extends Entity
             return false;
         }
 
-        if ($transaction->status != 'pending') {
+        if ($transaction->status != 'paid') {
             $this->setError('Payment already in process!');
             return false;
         }
