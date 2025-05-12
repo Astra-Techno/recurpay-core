@@ -15,11 +15,11 @@ class Payments extends Sql
                              WHEN pp.total_due <= 0 AND pp.due_from > CURRENT_DATE THEN 'upcoming'
                              WHEN pp.total_due <= 0 AND pp.due_from <= CURRENT_DATE THEN 'paid'
                              ELSE 'other' END AS pay_status";
-        $condition = "
+          $condition = "
             CASE WHEN ppt.id IS NOT NULL THEN ppt.status
-                WHEN pp.total_due > 0  AND pt.user_id=" . Auth::id() . " THEN 'due'
-                WHEN pp.total_due > 0  AND pt.user_id=" . Auth::id() . " THEN 'pending'
-                ELSE 'upcoming' END AS pay_status
+                WHEN pp.total_due > 0  AND pu.user_id=" . Auth::id() . " THEN 'due'
+                WHEN pp.total_due > 0  AND p.user_id=" . Auth::id() . " THEN 'pending'
+                ELSE '' END AS pay_status
         ";
         return $condition;
     }
