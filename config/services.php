@@ -34,5 +34,10 @@ return [
             'channel' => env('SLACK_BOT_USER_DEFAULT_CHANNEL'),
         ],
     ],
+    'whatsapp' => [
+        'url' => env('WA_API_URL', 'https://graph.facebook.com/v19.0'),
+        'token' => env('WA_ACCESS_TOKEN'),
+        'phone_number_id' => env('WA_PHONE_NUMBER_ID'),
+    ],
 
 ];
